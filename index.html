@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <!-- Make it responsive on mobile -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Stream Orders</title>
+  <style>
+    /* Base styling */
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      background: #f2f2f2;
+    }
+    h2 {
+      text-align: center;
+      padding: 1em 0 0.5em;
+      margin: 0;
+    }
+    /* Main container */
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 0 1em 2em;
+    }
+
+    /* Session controls */
+    .session-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5em;
+      justify-content: center;
+      margin: 1em 0;
+    }
+
+    label {
+      font-size: 1rem;
+      margin-right: 0.3em;
+    }
+    input[type="text"], input[type="number"] {
+      padding: 0.5em;
+      font-size: 1rem;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+    }
+    button {
+      cursor: pointer;
+      padding: 0.6em 1em;
+      font-size: 1rem;
+      border: none;
+      border-radius: 4px;
+      background: #007bff;
+      color: #fff;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+
+    .box-list {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+    }
+    .box-list li {
+      background: #fff;
+      margin: 0.5em 0;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      overflow: hidden;
+    }
+    .box-header {
+      padding: 1em;
+      font-weight: bold;
+      font-size: 1rem;
+      cursor: pointer;
+      background: #e9e9e9;
+    }
+    .box-header:hover {
+      background: #d9d9d9;
+    }
+
+    .items-container {
+      padding: 1em;
+      display: none; /* hidden by default */
+      background: #fafafa;
+    }
+    .items-list {
+      list-style-type: none;
+      padding: 0;
+      margin: 0 0 1em 0;
+    }
+    .items-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.6em;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin: 0.4em 0;
+    }
+    .items-list li:hover {
+      background: #f0f0f0;
+    }
+    .remove-btn {
+      cursor: pointer;
+      border: none;
+      background: #dc3545;
+      color: #fff;
+      border-radius: 4px;
+      padding: 0.4em 0.8em;
+      margin-left: 1em;
+      font-size: 0.9rem;
+    }
+    .remove-btn:hover {
+      background: #c82333;
+    }
+
+    .box-total {
+      font-weight: bold;
+      margin: 0.5em 0 1em;
+      font-size: 1rem;
+    }
+    .item-form {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5em;
+      margin-bottom: 1em;
+    }
+    .item-form label {
+      font-size: 0.9rem;
+    }
+    .item-form input {
+      font-size: 0.9rem;
+      padding: 0.4em;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      min-width: 70px;
+    }
+    .addItemBtn {
+      font-size: 0.9rem;
+      background-color: #28a745;
+    }
+    .addItemBtn:hover {
+      background-color: #218838;
+    }
+
+    /* Special buttons */
+    #copyDataBtn {
+      background-color: #6f42c1;
+    }
+    #copyDataBtn:hover {
+      background-color: #59309a;
+    }
+    #startNewSessionBtn {
+      background-color: #17a2b8;
+    }
+    #startNewSessionBtn:hover {
+      background-color: #117a8b;
+    }
+
+    /* Old sessions area */
+    .old-sessions-area {
+      background: #ffffff;
+      margin-top: 1em;
+      padding: 1em;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      display: none; /* hidden by default */
+    }
+    .old-sessions-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .old-session-item {
+      margin: 1em 0;
+      padding: 0.8em;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #f9f9f9;
+    }
+    .old-session-header {
+      font-weight: bold;
+      cursor: pointer;
+      margin-bottom: 0.5em;
+    }
+    .old-session-boxes {
+      display: none; /* hidden by default */
+      margin-top: 0.5em;
+      padding-left: 1em;
+    }
+    .restore-btn {
+      background-color: #ff9800;
+      margin-top: 0.5em;
+    }
+    .restore-btn:hover {
+      background-color: #e68a00;
+    }
+
+  </style>
+</head>
+<body>
+
+<h2>Live Stream Orders</h2>
+<div class="container">
+
+  <!-- Top controls: create box, copy data, new session, view old sessions -->
+  <div class="session-controls">
+    <label for="usernameInput">Username:</label>
+    <input type="text" id="usernameInput" placeholder="e.g. JohnDoe">
+    
+    <label for="boxNumberInput">Box #:</label>
+    <input type="text" id="boxNumberInput" placeholder="e.g. 001">
+    
+    <button id="createBoxBtn">New Box</button>
+  </div>
+
+  <div class="session-controls">
+    <button id="startNewSessionBtn">Start New Session</button>
+    <button id="copyDataBtn">Copy All Data</button>
+    <button id="toggleOldSessionsBtn">View Old Sessions</button>
+  </div>
+
+  <!-- Current session's boxes -->
+  <ul id="boxList" class="box-list"></ul>
+
+  <!-- Old sessions display -->
+  <div class="old-sessions-area" id="oldSessionsArea">
+    <h3>Archived Sessions</h3>
+    <ul id="oldSessionsList" class="old-sessions-list"></ul>
+  </div>
+
+</div>
+
+<script>
+  /**********************************************************
+   * Data Structure in localStorage:
+   * {
+   *   activeSession: {
+   *     id: "timestamp or unique ID",
+   *     date: "timestamp or human date",
+   *     boxes: [ ... ]  // current session's boxes
+   *   },
+   *   archive: [
+   *     {
+   *       id: "...",
+   *       date: "...",
+   *       boxes: [ ... ]
+   *     },
+   *     ...
+   *   ]
+   * }
+   **********************************************************/
+
+  const STORAGE_KEY = 'liveStreamData';
+
+  // "Global" in-memory object that mirrors localStorage data
+  // We'll load it from localStorage on page load, and write back whenever something changes
+  let appData = {
+    activeSession: {
+      id: '',
+      date: '',
+      boxes: []
+    },
+    archive: []
+  };
+
+  // === DOM elements ===
+  const createBoxBtn = document.getElementById('createBoxBtn');
+  const usernameInput = document.getElementById('usernameInput');
+  const boxNumberInput = document.getElementById('boxNumberInput');
+  const boxList = document.getElementById('boxList');
+  const copyDataBtn = document.getElementById('copyDataBtn');
+  const startNewSessionBtn = document.getElementById('startNewSessionBtn');
+  const toggleOldSessionsBtn = document.getElementById('toggleOldSessionsBtn');
+  const oldSessionsArea = document.getElementById('oldSessionsArea');
+  const oldSessionsList = document.getElementById('oldSessionsList');
+
+  /**********************************************************
+   * Initialization
+   **********************************************************/
+  window.addEventListener('DOMContentLoaded', init);
+
+  function init() {
+    loadFromLocalStorage();
+    
+    // If there's no active session (fresh install?), create one
+    if (!appData.activeSession || !appData.activeSession.id) {
+      createNewSession();
+    }
+
+    renderBoxes();
+    renderOldSessions();
+  }
+
+  function loadFromLocalStorage() {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      try {
+        appData = JSON.parse(saved);
+      } catch (err) {
+        console.warn('Corrupted localStorage data, resetting:', err);
+        appData = { activeSession: {}, archive: [] };
+      }
+    }
+  }
+
+  function saveToLocalStorage() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+  }
+
+  /**********************************************************
+   * Session Handling
+   **********************************************************/
+  function createNewSession() {
+    const now = new Date();
+    appData.activeSession = {
+      id: Date.now().toString(),
+      date: now.toLocaleString(),
+      boxes: []
+    };
+    saveToLocalStorage();
+  }
+
+  function startNewSession() {
+    // 1) Archive the current active session
+    //    (only if there are any boxes or items - up to you. We'll archive no matter what.)
+    if (appData.activeSession && appData.activeSession.id) {
+      appData.archive.push(appData.activeSession);
+    }
+
+    // 2) Create a fresh new session
+    createNewSession();
+
+    // 3) Re-render
+    renderBoxes();
+    renderOldSessions();
+  }
+
+  /**********************************************************
+   * Box and Item Management
+   **********************************************************/
+  createBoxBtn.addEventListener('click', () => {
+    const username = usernameInput.value.trim();
+    const boxNumber = boxNumberInput.value.trim();
+
+    if (!username || !boxNumber) {
+      alert('Please enter both username and box number.');
+      return;
+    }
+
+    // Check if the box number already exists in the current session
+    if (appData.activeSession.boxes.some(b => b.boxNumber === boxNumber)) {
+      alert(`Box #${boxNumber} already exists in this session. Choose another.`);
+      return;
+    }
+
+    // Create new box
+    const newBox = {
+      boxNumber: boxNumber,
+      username: username,
+      items: []
+    };
+    appData.activeSession.boxes.push(newBox);
+
+    // Clear input fields
+    usernameInput.value = '';
+    boxNumberInput.value = '';
+
+    // Save and re-render
+    saveToLocalStorage();
+    renderBoxes();
+  });
+
+  function renderBoxes() {
+    boxList.innerHTML = '';
+
+    // For each box in the active session
+    appData.activeSession.boxes.forEach(box => {
+      const boxLi = document.createElement('li');
+
+      // Header
+      const headerDiv = document.createElement('div');
+      headerDiv.classList.add('box-header');
+      headerDiv.textContent = `User: ${box.username} | Box #${box.boxNumber}`;
+
+      // Items container
+      const itemsContainer = document.createElement('div');
+      itemsContainer.classList.add('items-container');
+
+      // Items list
+      const itemsList = document.createElement('ul');
+      itemsList.classList.add('items-list');
+
+      // Render items
+      box.items.forEach((item, index) => {
+        const itemLi = document.createElement('li');
+        itemLi.innerHTML = `
+          <span>${item.description}</span>
+          <span>
+            $${item.price.toFixed(2)}
+            <button class="remove-btn" data-index="${index}">Remove</button>
+          </span>
+        `;
+        itemsList.appendChild(itemLi);
+
+        // Remove item
+        const removeBtn = itemLi.querySelector('.remove-btn');
+        removeBtn.addEventListener('click', () => {
+          box.items.splice(index, 1);
+          saveToLocalStorage();
+          renderBoxes();
+        });
+      });
+
+      // Calculate total
+      const total = box.items.reduce((sum, it) => sum + it.price, 0);
+
+      const totalDiv = document.createElement('div');
+      totalDiv.classList.add('box-total');
+      totalDiv.textContent = 'Total: $' + total.toFixed(2);
+
+      // Add item form
+      const addItemForm = document.createElement('div');
+      addItemForm.classList.add('item-form');
+      addItemForm.innerHTML = `
+        <label>Description:</label>
+        <input type="text" class="descInput" placeholder="Item name">
+        <label>Price:</label>
+        <input type="number" class="priceInput" placeholder="0">
+        <button class="addItemBtn">Add Item</button>
+      `;
+
+      const addItemBtn = addItemForm.querySelector('.addItemBtn');
+      addItemBtn.addEventListener('click', () => {
+        const descEl = addItemForm.querySelector('.descInput');
+        const priceEl = addItemForm.querySelector('.priceInput');
+
+        const desc = descEl.value.trim();
+        const price = parseFloat(priceEl.value.trim());
+
+        if (!desc || isNaN(price)) {
+          alert('Please enter a valid description and price.');
+          return;
+        }
+
+        box.items.push({ description: desc, price: price });
+        saveToLocalStorage();
+        renderBoxes();
+      });
+
+      // Append
+      itemsContainer.appendChild(itemsList);
+      itemsContainer.appendChild(totalDiv);
+      itemsContainer.appendChild(addItemForm);
+
+      headerDiv.addEventListener('click', () => {
+        itemsContainer.style.display =
+          (itemsContainer.style.display === 'none') ? 'block' : 'none';
+      });
+      // Start hidden
+      itemsContainer.style.display = 'none';
+
+      boxLi.appendChild(headerDiv);
+      boxLi.appendChild(itemsContainer);
+      boxList.appendChild(boxLi);
+    });
+  }
+
+  /**********************************************************
+   * Copy current session data
+   **********************************************************/
+  copyDataBtn.addEventListener('click', () => {
+    const boxes = appData.activeSession.boxes;
+    if (boxes.length === 0) {
+      alert('No boxes to copy in the current session.');
+      return;
+    }
+
+    let output = `Live Stream Orders (Session on ${appData.activeSession.date})\n`;
+    boxes.forEach((box) => {
+      output += `\nBox #${box.boxNumber} (User: ${box.username})\n`;
+      box.items.forEach((item, idx) => {
+        output += `  ${idx + 1}) ${item.description} - $${item.price.toFixed(2)}\n`;
+      });
+      let total = box.items.reduce((sum, it) => sum + it.price, 0);
+      output += `  Total: $${total.toFixed(2)}\n`;
+    });
+
+    navigator.clipboard.writeText(output)
+      .then(() => {
+        alert('All order data copied to clipboard!');
+      })
+      .catch(err => {
+        alert('Failed to copy data: ' + err);
+      });
+  });
+
+  /**********************************************************
+   * Start a new session
+   **********************************************************/
+  startNewSessionBtn.addEventListener('click', () => {
+    if (!confirm('Are you sure you want to archive this session and start a new one?')) {
+      return;
+    }
+    startNewSession();
+  });
+
+  /**********************************************************
+   * View / Hide Old Sessions
+   **********************************************************/
+  toggleOldSessionsBtn.addEventListener('click', () => {
+    if (oldSessionsArea.style.display === 'none') {
+      oldSessionsArea.style.display = 'block';
+      renderOldSessions();
+    } else {
+      oldSessionsArea.style.display = 'none';
+    }
+  });
+
+  function renderOldSessions() {
+    oldSessionsList.innerHTML = '';
+
+    const sessions = appData.archive;
+    if (!sessions || sessions.length === 0) {
+      oldSessionsList.innerHTML = '<li>No archived sessions yet.</li>';
+      return;
+    }
+
+    sessions.forEach(session => {
+      const li = document.createElement('li');
+      li.classList.add('old-session-item');
+
+      // Header
+      const headerDiv = document.createElement('div');
+      headerDiv.classList.add('old-session-header');
+      headerDiv.textContent = `Session on ${session.date} (ID: ${session.id})`;
+
+      // Container for session details
+      const detailsDiv = document.createElement('div');
+      detailsDiv.classList.add('old-session-boxes');
+
+      // Build session details text
+      let txt = '';
+      session.boxes.forEach((box, i) => {
+        txt += `Box #${box.boxNumber} (User: ${box.username})\n`;
+        box.items.forEach((item, idx) => {
+          txt += `  ${idx + 1}) ${item.description} - $${item.price.toFixed(2)}\n`;
+        });
+        const total = box.items.reduce((sum, it) => sum + it.price, 0);
+        txt += `  Total: $${total.toFixed(2)}\n\n`;
+      });
+
+      // Display in a <pre> for formatting
+      const pre = document.createElement('pre');
+      pre.textContent = txt || '(No boxes in this session.)';
+      detailsDiv.appendChild(pre);
+
+      // Restore button
+      const restoreBtn = document.createElement('button');
+      restoreBtn.classList.add('restore-btn');
+      restoreBtn.textContent = 'Restore as Current';
+      restoreBtn.addEventListener('click', () => {
+        if (!confirm('Restoring this session will overwrite your current session. Proceed?')) {
+          return;
+        }
+        // Move current session to archive if needed
+        if (appData.activeSession && appData.activeSession.id) {
+          appData.archive.push(appData.activeSession);
+        }
+        // Remove the restored session from the archive (to avoid duplicate)
+        appData.archive = appData.archive.filter(s => s.id !== session.id);
+
+        // Make this session the active one
+        appData.activeSession = session;
+        saveToLocalStorage();
+        renderBoxes();
+        renderOldSessions();
+
+        // Hide the old sessions area (optional)
+        oldSessionsArea.style.display = 'none';
+      });
+
+      detailsDiv.appendChild(restoreBtn);
+
+      // Toggle details
+      headerDiv.addEventListener('click', () => {
+        detailsDiv.style.display =
+          (detailsDiv.style.display === 'none') ? 'block' : 'none';
+      });
+      detailsDiv.style.display = 'none';
+
+      li.appendChild(headerDiv);
+      li.appendChild(detailsDiv);
+      oldSessionsList.appendChild(li);
+    });
+  }
+</script>
+</body>
+</html>
