@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Live Stream Orders</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 1em;
+      background: #f2f2f2;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 1em;
+    }
+    .box-form, .item-form, .clipboard-form {
+      margin: 1em 0;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5em;
+      justify-content: center;
+    }
+    label {
+      display: inline-block;
+      margin-right: 0.25em;
+    }
+    input[type="text"], input[type="number"] {
+      padding: 0.25em;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      min-width: 70px;
+    }
+    button {
+      cursor: pointer;
+      padding: 0.4em 0.8em;
+      border: none;
+      border-radius: 4px;
+      background: #007bff;
+      color: #fff;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+
+    .box-list {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+      max-width: 600px;
+      margin: 0 auto; /* center in the page */
+    }
+    .box-list li {
+      background: #fff;
+      margin: 0.5em 0;
+      border-radius: 4px;
+      border: 1px solid #ddd;
+      overflow: hidden;
+    }
+    .box-header {
+      padding: 0.7em;
+      font-weight: bold;
+      cursor: pointer;
+      background: #e9e9e9;
+    }
+    .box-header:hover {
+      background: #d9d9d9;
+    }
+
+    /* The container that wraps the items for each box */
+    .items-container {
+      padding: 0.7em;
+      display: none; /* hidden by default */
+      background: #fafafa;
+    }
+    .items-list {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+    }
+    .items-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.4em;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin: 0.4em 0;
+    }
+    .items-list li:hover {
+      background: #f0f0f0;
+    }
+    .remove-btn {
+      cursor: pointer;
+      border: none;
+      background: #dc3545;
+      color: #fff;
+      border-radius: 4px;
+      padding: 0.2em 0.5em;
+      margin-left: 1em;
+    }
+    .remove-btn:hover {
+      background: #c82333;
+    }
+
+    .box-total {
+      font-weight: bold;
+      margin: 1em 0 0.5em 0;
+    }
+  </style>
+</head>
+<body>
+
+<h2>Live Stream Orders</h2>
+
+<!-- Create a new box -->
+<div class="box-form">
+  <label for="usernameInput">Username:</label>
+  <input type="text" id="usernameInput" placeholder="e.g. JohnDoe">
+  
+  <label for="boxNumberInput">Box #:</label>
+  <input type="text" id="boxNumberInput" placeholder="e.g. 001">
+  
+  <button id="createBoxBtn">New Box</button>
+</div>
+
+<ul id="boxList" class="box-list">
+  <!-- Boxes will appear here -->
+</ul>
+
+<!-- Button to copy all data to clipboard -->
+<div class="clipboard-form">
+  <button id="copyDataBtn">Copy All Data</button>
+</div>
+
+<script>
+  // We'll keep an array of box objects in memory
+  // Example of the structure:
+  // boxes = [
+  //   {
+  //     boxNumber: '001',
+  //     username: 'JohnDoe',
+  //     items: [
+  //       { description: 'T-shirt', price: 20 },
+  //       { description: 'Hat', price: 10 }
+  //     ]
+  //   }
+  // ];
+  let boxes = [];
+
+  const createBoxBtn = document.getElementById('createBoxBtn');
+  const usernameInput = document.getElementById('usernameInput');
+  const boxNumberInput = document.getElementById('boxNumberInput');
+  const boxList = document.getElementById('boxList');
+  const copyDataBtn = document.getElementById('copyDataBtn');
+
+  createBoxBtn.addEventListener('click', () => {
+    const username = usernameInput.value.trim();
+    const boxNumber = boxNumberInput.value.trim();
+
+    if (!username || !boxNumber) {
+      alert('Please enter both username and box number.');
+      return;
+    }
+
+    // Check if the box number already exists
+    if (boxes.some(b => b.boxNumber === boxNumber)) {
+      alert(`Box #${boxNumber} already exists. Choose another.`);
+      return;
+    }
+
+    // Create new box
+    const newBox = {
+      boxNumber: boxNumber,
+      username: username,
+      items: []
+    };
+    boxes.push(newBox);
+
+    // Clear input fields
+    usernameInput.value = '';
+    boxNumberInput.value = '';
+
+    // Re-render boxes
+    renderBoxes();
+  });
+
+  function renderBoxes() {
+    boxList.innerHTML = '';
+
+    boxes.forEach(box => {
+      // Create list item for this box
+      const boxLi = document.createElement('li');
+
+      // Header (username, box #)
+      const headerDiv = document.createElement('div');
+      headerDiv.classList.add('box-header');
+      headerDiv.textContent = `User: ${box.username} | Box #${box.boxNumber}`;
+
+      // Items container (hidden by default)
+      const itemsContainer = document.createElement('div');
+      itemsContainer.classList.add('items-container');
+
+      // The items list
+      const itemsList = document.createElement('ul');
+      itemsList.classList.add('items-list');
+
+      // Render each item
+      box.items.forEach((item, index) => {
+        const itemLi = document.createElement('li');
+        itemLi.innerHTML = `
+          <span>${item.description}</span>
+          <span>
+            $${item.price.toFixed(2)}
+            <button class="remove-btn" data-index="${index}">Remove</button>
+          </span>
+        `;
+        itemsList.appendChild(itemLi);
+
+        // Remove item event
+        const removeBtn = itemLi.querySelector('.remove-btn');
+        removeBtn.addEventListener('click', () => {
+          // Remove this item from box
+          box.items.splice(index, 1);
+          renderBoxes();
+        });
+      });
+
+      // Calculate total
+      const total = box.items.reduce((sum, it) => sum + it.price, 0);
+
+      // Display total
+      const totalDiv = document.createElement('div');
+      totalDiv.classList.add('box-total');
+      totalDiv.textContent = 'Total: $' + total.toFixed(2);
+
+      // Form to add a new item
+      const addItemForm = document.createElement('div');
+      addItemForm.classList.add('item-form');
+      addItemForm.innerHTML = `
+        <label>Description:</label>
+        <input type="text" class="descInput" placeholder="Item name">
+        <label>Price:</label>
+        <input type="number" class="priceInput" placeholder="0">
+        <button class="addItemBtn">Add Item</button>
+      `;
+
+      // Add item event
+      addItemForm.querySelector('.addItemBtn').addEventListener('click', () => {
+        const desc = addItemForm.querySelector('.descInput').value.trim();
+        const priceStr = addItemForm.querySelector('.priceInput').value.trim();
+        const price = parseFloat(priceStr);
+
+        if (!desc || isNaN(price)) {
+          alert('Please enter a valid description and price.');
+          return;
+        }
+        // Add item to the box
+        box.items.push({ description: desc, price: price });
+        renderBoxes();
+      });
+
+      // Append everything
+      itemsContainer.appendChild(itemsList);
+      itemsContainer.appendChild(totalDiv);
+      itemsContainer.appendChild(addItemForm);
+
+      // Clicking the header toggles the items container
+      headerDiv.addEventListener('click', () => {
+        itemsContainer.style.display = 
+          (itemsContainer.style.display === 'none') ? 'block' : 'none';
+      });
+
+      // Put header and items container into the box <li>
+      boxLi.appendChild(headerDiv);
+      boxLi.appendChild(itemsContainer);
+
+      // Finally, add the box <li> to the main list
+      boxList.appendChild(boxLi);
+    });
+  }
+
+  // Copy all data to clipboard in a neat format
+  copyDataBtn.addEventListener('click', () => {
+    if (boxes.length === 0) {
+      alert('No boxes to copy.');
+      return;
+    }
+    
+    let output = 'Live Stream Orders\n';
+    
+    boxes.forEach((box, i) => {
+      output += `\nBox #${box.boxNumber} (User: ${box.username})\n`;
+      
+      box.items.forEach((item, idx) => {
+        output += `  ${idx + 1}) ${item.description} - $${item.price.toFixed(2)}\n`;
+      });
+      
+      let total = box.items.reduce((sum, it) => sum + it.price, 0);
+      output += `  Total: $${total.toFixed(2)}\n`;
+    });
+    
+    // Use the Clipboard API to copy text
+    navigator.clipboard.writeText(output)
+      .then(() => {
+        alert("All order data copied to clipboard!");
+      })
+      .catch(err => {
+        alert("Failed to copy data: " + err);
+      });
+  });
+</script>
+
+</body>
+</html>
