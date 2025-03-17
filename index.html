@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <!-- Make it responsive on mobile -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Stream Orders</title>
+  <style>
+    /* Base reset & body styles */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      font-family: Arial, sans-serif;
+      background: #f2f2f2;
+      color: #333;
+      line-height: 1.4;
+    }
+
+    /* Container for everything */
+    .container {
+      max-width: 600px;
+      margin: 0 auto;
+      padding: 1em;
+    }
+
+    /* Heading */
+    h2 {
+      text-align: center;
+      font-size: 1.6rem;
+      margin-bottom: 0.5em;
+    }
+
+    /* Session Control Buttons (top row) */
+    .session-controls {
+      display: flex;
+      flex-direction: column;  /* stack items vertically */
+      gap: 1em;
+      margin-bottom: 1.5em;
+    }
+    .session-controls button {
+      padding: 0.75em;
+      font-size: 1.1rem;
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      cursor: pointer;
+    }
+    .session-controls button:active {
+      opacity: 0.8;
+    }
+    #startNewSessionBtn {
+      background-color: #17a2b8;
+    }
+    #startNewSessionBtn:hover {
+      background-color: #138496;
+    }
+    #copyDataBtn {
+      background-color: #6f42c1;
+    }
+    #copyDataBtn:hover {
+      background-color: #59309a;
+    }
+    #toggleOldSessionsBtn {
+      background-color: #555;
+    }
+    #toggleOldSessionsBtn:hover {
+      background-color: #333;
+    }
+
+    /* New Box Form */
+    .new-box-form {
+      display: flex;
+      flex-direction: column; /* stack labels & inputs vertically */
+      gap: 1em;
+      margin-bottom: 2em;
+    }
+    .new-box-form label {
+      font-size: 1.2rem;
+      font-weight: bold;
+      margin-bottom: 0.3em;
+    }
+    .new-box-form input {
+      padding: 0.7em;
+      font-size: 1.1rem;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .new-box-form button {
+      margin-top: 0.5em;
+      padding: 0.75em;
+      font-size: 1.1rem;
+      background: #007bff;
+      border: none;
+      border-radius: 6px;
+      color: #fff;
+      cursor: pointer;
+    }
+    .new-box-form button:hover {
+      background: #0056b3;
+    }
+
+    /* Current Boxes */
+    .box-list {
+      list-style-type: none;
+      padding: 0;
+      margin: 0;
+    }
+    .box-list li {
+      background: #fff;
+      margin-bottom: 1em;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      overflow: hidden;
+    }
+    .box-header {
+      padding: 1em;
+      font-weight: bold;
+      font-size: 1.2rem;
+      background: #e9e9e9;
+      cursor: pointer;
+    }
+    .box-header:hover {
+      background: #d9d9d9;
+    }
+    .items-container {
+      display: none;
+      background: #fafafa;
+      padding: 1em;
+    }
+    .items-list {
+      list-style-type: none;
+      padding: 0;
+      margin: 0 0 1em;
+    }
+    .items-list li {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.6em;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-bottom: 0.5em;
+      font-size: 1.05rem;
+    }
+    .items-list li:hover {
+      background: #f0f0f0;
+    }
+    .remove-btn {
+      background: #dc3545;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 0.4em 0.8em;
+      cursor: pointer;
+      font-size: 0.9rem;
+      margin-left: 0.5em;
+    }
+    .remove-btn:hover {
+      background: #c82333;
+    }
+    .box-total {
+      margin: 1em 0;
+      font-weight: bold;
+      font-size: 1.1rem;
+    }
+
+    /* Add Item Form inside box */
+    .item-form {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5em;
+      margin-bottom: 1em;
+    }
+    .item-form label {
+      font-size: 1rem;
+      margin-bottom: 0.2em;
+    }
+    .item-form input {
+      font-size: 1.1rem;
+      padding: 0.5em;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+    }
+    .addItemBtn {
+      font-size: 1.1rem;
+      background-color: #28a745;
+      color: #fff;
+      border-radius: 4px;
+      padding: 0.6em;
+      border: none;
+      cursor: pointer;
+    }
+    .addItemBtn:hover {
+      background-color: #218838;
+    }
+
+    /* Old Sessions Area */
+    .old-sessions-area {
+      background: #ffffff;
+      margin-top: 1.5em;
+      padding: 1em;
+      border-radius: 6px;
+      border: 1px solid #ddd;
+      display: none;
+    }
+    .old-sessions-area h3 {
+      font-size: 1.3rem;
+      margin-bottom: 0.5em;
+    }
+    .old-sessions-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+    }
+    .old-session-item {
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      background: #f9f9f9;
+      margin-bottom: 1em;
+      padding: 0.8em;
+    }
+    .old-session-header {
+      font-weight: bold;
+      font-size: 1rem;
+      margin-bottom: 0.5em;
+      cursor: pointer;
+    }
+    .old-session-boxes {
+      display: none;
+      margin-top: 0.5em;
+      padding-left: 1em;
+    }
+    .old-session-boxes pre {
+      font-size: 1rem;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+    }
+    .restore-btn {
+      background-color: #ff9800;
+      margin-top: 0.5em;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      padding: 0.6em;
+      cursor: pointer;
+      font-size: 1rem;
+    }
+    .restore-btn:hover {
+      background-color: #e68a00;
+    }
+
+    /* Larger Tap Targets on small screens */
+    @media (max-width: 600px) {
+      h2 {
+        font-size: 1.5rem;
+      }
+      .box-header {
+        font-size: 1.1rem;
+      }
+      .remove-btn {
+        font-size: 1rem;
+      }
+      .addItemBtn {
+        font-size: 1rem;
+      }
+      .restore-btn {
+        font-size: 1rem;
+      }
+      .old-session-header {
+        font-size: 1rem;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h2>Live Stream Orders</h2>
+
+    <!-- Top buttons: start new session, copy data, toggle old sessions -->
+    <div class="session-controls">
+      <button id="startNewSessionBtn">Start New Session</button>
+      <button id="copyDataBtn">Copy Current Session</button>
+      <button id="toggleOldSessionsBtn">View Old Sessions</button>
+    </div>
+
+    <!-- Form to create new box -->
+    <div class="new-box-form">
+      <label for="usernameInput">Username:</label>
+      <input type="text" id="usernameInput" placeholder="e.g. JaneDoe">
+      
+      <label for="boxNumberInput">Box #:</label>
+      <input type="text" id="boxNumberInput" placeholder="e.g. 001">
+      
+      <button id="createBoxBtn">Create Box</button>
+    </div>
+
+    <!-- Current session's boxes -->
+    <ul id="boxList" class="box-list"></ul>
+
+    <!-- Old sessions display -->
+    <div class="old-sessions-area" id="oldSessionsArea">
+      <h3>Archived Sessions</h3>
+      <ul id="oldSessionsList" class="old-sessions-list"></ul>
+    </div>
+  </div>
+
+  <script>
+    /**********************************************************
+     * Data Structure in localStorage:
+     * {
+     *   activeSession: {
+     *     id: "timestamp or unique ID",
+     *     date: "timestamp or human date",
+     *     boxes: [ { boxNumber, username, items: [...] }, ... ]
+     *   },
+     *   archive: [
+     *     {
+     *       id: "...",
+     *       date: "...",
+     *       boxes: [...]
+     *     },
+     *     ...
+     *   ]
+     * }
+     **********************************************************/
+
+    const STORAGE_KEY = 'liveStreamData';
+
+    // "Global" in-memory object that mirrors localStorage data
+    let appData = {
+      activeSession: {
+        id: '',
+        date: '',
+        boxes: []
+      },
+      archive: []
+    };
+
+    // === DOM elements ===
+    const createBoxBtn = document.getElementById('createBoxBtn');
+    const usernameInput = document.getElementById('usernameInput');
+    const boxNumberInput = document.getElementById('boxNumberInput');
+    const boxList = document.getElementById('boxList');
+
+    const copyDataBtn = document.getElementById('copyDataBtn');
+    const startNewSessionBtn = document.getElementById('startNewSessionBtn');
+    const toggleOldSessionsBtn = document.getElementById('toggleOldSessionsBtn');
+
+    const oldSessionsArea = document.getElementById('oldSessionsArea');
+    const oldSessionsList = document.getElementById('oldSessionsList');
+
+    /**********************************************************
+     * Initialization
+     **********************************************************/
+    window.addEventListener('DOMContentLoaded', init);
+
+    function init() {
+      loadFromLocalStorage();
+      
+      // If there's no active session (fresh install?), create one
+      if (!appData.activeSession || !appData.activeSession.id) {
+        createNewSession();
+      }
+
+      renderBoxes();
+      renderOldSessions();
+    }
+
+    function loadFromLocalStorage() {
+      const saved = localStorage.getItem(STORAGE_KEY);
+      if (saved) {
+        try {
+          appData = JSON.parse(saved);
+        } catch (err) {
+          console.warn('Corrupted localStorage data, resetting:', err);
+          appData = { activeSession: {}, archive: [] };
+        }
+      }
+    }
+
+    function saveToLocalStorage() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(appData));
+    }
+
+    /**********************************************************
+     * Session Handling
+     **********************************************************/
+    function createNewSession() {
+      const now = new Date();
+      appData.activeSession = {
+        id: Date.now().toString(),
+        date: now.toLocaleString(),
+        boxes: []
+      };
+      saveToLocalStorage();
+    }
+
+    function startNewSession() {
+      // Archive the current active session (unless it's empty,
+      // but we'll just archive anyway for consistency).
+      if (appData.activeSession && appData.activeSession.id) {
+        appData.archive.push(appData.activeSession);
+      }
+      // Create a fresh new session
+      createNewSession();
+
+      // Re-render
+      renderBoxes();
+      renderOldSessions();
+    }
+
+    startNewSessionBtn.addEventListener('click', () => {
+      if (!confirm('Are you sure you want to archive this session and start a new one?')) {
+        return;
+      }
+      startNewSession();
+    });
+
+    /**********************************************************
+     * Create a New Box
+     **********************************************************/
+    createBoxBtn.addEventListener('click', () => {
+      const username = usernameInput.value.trim();
+      const boxNumber = boxNumberInput.value.trim();
+
+      if (!username || !boxNumber) {
+        alert('Please enter both username and box number.');
+        return;
+      }
+
+      // Check if box # already exists in this session
+      if (appData.activeSession.boxes.some(b => b.boxNumber === boxNumber)) {
+        alert(`Box #${boxNumber} already exists in this session. Choose another.`);
+        return;
+      }
+
+      // Create new box
+      const newBox = {
+        boxNumber: boxNumber,
+        username: username,
+        items: []
+      };
+      appData.activeSession.boxes.push(newBox);
+
+      // Clear inputs
+      usernameInput.value = '';
+      boxNumberInput.value = '';
+
+      saveToLocalStorage();
+      renderBoxes();
+    });
+
+    /**********************************************************
+     * Render Current Session Boxes
+     **********************************************************/
+    function renderBoxes() {
+      boxList.innerHTML = '';
+
+      const boxes = appData.activeSession.boxes;
+      if (!boxes || boxes.length === 0) {
+        // If no boxes, show a simple message
+        const msg = document.createElement('p');
+        msg.textContent = 'No boxes added yet.';
+        msg.style.textAlign = 'center';
+        msg.style.color = '#666';
+        boxList.appendChild(msg);
+        return;
+      }
+
+      boxes.forEach(box => {
+        const boxLi = document.createElement('li');
+
+        // Header
+        const headerDiv = document.createElement('div');
+        headerDiv.classList.add('box-header');
+        headerDiv.textContent = `User: ${box.username} | Box #${box.boxNumber}`;
+
+        // Items container
+        const itemsContainer = document.createElement('div');
+        itemsContainer.classList.add('items-container');
+
+        // Items list
+        const itemsList = document.createElement('ul');
+        itemsList.classList.add('items-list');
+
+        // Populate items
+        box.items.forEach((item, index) => {
+          const itemLi = document.createElement('li');
+          itemLi.innerHTML = `
+            <span>${item.description}</span>
+            <span>
+              $${item.price.toFixed(2)}
+              <button class="remove-btn" data-index="${index}">Remove</button>
+            </span>
+          `;
+          itemsList.appendChild(itemLi);
+
+          // Remove item
+          const removeBtn = itemLi.querySelector('.remove-btn');
+          removeBtn.addEventListener('click', () => {
+            box.items.splice(index, 1);
+            saveToLocalStorage();
+            renderBoxes();
+          });
+        });
+
+        // Calculate total
+        const total = box.items.reduce((sum, it) => sum + it.price, 0);
+
+        const totalDiv = document.createElement('div');
+        totalDiv.classList.add('box-total');
+        totalDiv.textContent = 'Total: $' + total.toFixed(2);
+
+        // Add item form
+        const addItemForm = document.createElement('div');
+        addItemForm.classList.add('item-form');
+        addItemForm.innerHTML = `
+          <label>Description:</label>
+          <input type="text" class="descInput" placeholder="Item name">
+          <label>Price:</label>
+          <input type="number" class="priceInput" placeholder="0">
+          <button class="addItemBtn">Add Item</button>
+        `;
+
+        const addItemBtn = addItemForm.querySelector('.addItemBtn');
+        addItemBtn.addEventListener('click', () => {
+          const descEl = addItemForm.querySelector('.descInput');
+          const priceEl = addItemForm.querySelector('.priceInput');
+
+          const desc = descEl.value.trim();
+          const price = parseFloat(priceEl.value.trim());
+
+          if (!desc || isNaN(price)) {
+            alert('Please enter a valid description and price.');
+            return;
+          }
+
+          box.items.push({ description: desc, price: price });
+          saveToLocalStorage();
+          renderBoxes();
+        });
+
+        // Append
+        itemsContainer.appendChild(itemsList);
+        itemsContainer.appendChild(totalDiv);
+        itemsContainer.appendChild(addItemForm);
+
+        // Toggle items container
+        headerDiv.addEventListener('click', () => {
+          itemsContainer.style.display =
+            (itemsContainer.style.display === 'none') ? 'block' : 'none';
+        });
+        itemsContainer.style.display = 'none';
+
+        boxLi.appendChild(headerDiv);
+        boxLi.appendChild(itemsContainer);
+        boxList.appendChild(boxLi);
+      });
+    }
+
+    /**********************************************************
+     * Copy Current Session Data
+     **********************************************************/
+    copyDataBtn.addEventListener('click', () => {
+      const boxes = appData.activeSession.boxes;
+      if (!boxes || boxes.length === 0) {
+        alert('No boxes to copy in the current session.');
+        return;
+      }
+
+      let output = `Live Stream Orders (Session on ${appData.activeSession.date})\n`;
+      boxes.forEach((box) => {
+        output += `\nBox #${box.boxNumber} (User: ${box.username})\n`;
+        box.items.forEach((item, idx) => {
+          output += `  ${idx + 1}) ${item.description} - $${item.price.toFixed(2)}\n`;
+        });
+        let total = box.items.reduce((sum, it) => sum + it.price, 0);
+        output += `  Total: $${total.toFixed(2)}\n`;
+      });
+
+      navigator.clipboard.writeText(output)
+        .then(() => {
+          alert('Current session data copied to clipboard!');
+        })
+        .catch(err => {
+          alert('Failed to copy data: ' + err);
+        });
+    });
+
+    /**********************************************************
+     * Toggle Old Sessions
+     **********************************************************/
+    toggleOldSessionsBtn.addEventListener('click', () => {
+      if (oldSessionsArea.style.display === 'none') {
+        oldSessionsArea.style.display = 'block';
+        renderOldSessions();
+      } else {
+        oldSessionsArea.style.display = 'none';
+      }
+    });
+
+    function renderOldSessions() {
+      oldSessionsList.innerHTML = '';
+
+      const sessions = appData.archive;
+      if (!sessions || sessions.length === 0) {
+        oldSessionsList.innerHTML = '<li>No archived sessions yet.</li>';
+        return;
+      }
+
+      sessions.forEach(session => {
+        const li = document.createElement('li');
+        li.classList.add('old-session-item');
+
+        // Header
+        const headerDiv = document.createElement('div');
+        headerDiv.classList.add('old-session-header');
+        headerDiv.textContent = `Session on ${session.date} (ID: ${session.id})`;
+
+        // Session details container
+        const detailsDiv = document.createElement('div');
+        detailsDiv.classList.add('old-session-boxes');
+
+        let txt = '';
+        session.boxes.forEach((box) => {
+          txt += `Box #${box.boxNumber} (User: ${box.username})\n`;
+          box.items.forEach((item, idx) => {
+            txt += `  ${idx + 1}) ${item.description} - $${item.price.toFixed(2)}\n`;
+          });
+          const total = box.items.reduce((sum, it) => sum + it.price, 0);
+          txt += `  Total: $${total.toFixed(2)}\n\n`;
+        });
+        const pre = document.createElement('pre');
+        pre.textContent = txt || '(No boxes in this session.)';
+        detailsDiv.appendChild(pre);
+
+        // Restore button
+        const restoreBtn = document.createElement('button');
+        restoreBtn.classList.add('restore-btn');
+        restoreBtn.textContent = 'Restore as Current';
+        restoreBtn.addEventListener('click', () => {
+          if (!confirm('Restoring this session will overwrite your current session. Proceed?')) {
+            return;
+          }
+          // Archive current session if it exists
+          if (appData.activeSession && appData.activeSession.id) {
+            appData.archive.push(appData.activeSession);
+          }
+          // Remove the chosen session from archive
+          appData.archive = appData.archive.filter(s => s.id !== session.id);
+
+          // Make that old session the new active
+          appData.activeSession = session;
+          saveToLocalStorage();
+          renderBoxes();
+          renderOldSessions();
+          oldSessionsArea.style.display = 'none';
+        });
+
+        detailsDiv.appendChild(restoreBtn);
+
+        // Toggle details
+        headerDiv.addEventListener('click', () => {
+          detailsDiv.style.display =
+            (detailsDiv.style.display === 'none') ? 'block' : 'none';
+        });
+        detailsDiv.style.display = 'none';
+
+        li.appendChild(headerDiv);
+        li.appendChild(detailsDiv);
+        oldSessionsList.appendChild(li);
+      });
+    }
+  </script>
+</body>
+</html>
