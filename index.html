@@ -121,10 +121,27 @@
       font-size: 1.2rem;
       background: #e9e9e9;
       cursor: pointer;
+      position: relative;
     }
     .box-header:hover {
       background: #d9d9d9;
     }
+
+    /* Edit button styling */
+    .edit-btn {
+      background-color: #ffc107;
+      color: #333;
+      border: none;
+      border-radius: 4px;
+      padding: 0.4em 0.8em;
+      cursor: pointer;
+      font-size: 0.9rem;
+      margin-left: 1em;
+    }
+    .edit-btn:hover {
+      background-color: #e0a800;
+    }
+
     .items-container {
       display: none;
       background: #fafafa;
@@ -195,6 +212,51 @@
     }
     .addItemBtn:hover {
       background-color: #218838;
+    }
+
+    /* Inline edit form for box name */
+    .edit-form {
+      display: none;
+      margin-top: 1em;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      padding: 0.8em;
+      background: #f9f9f9;
+    }
+    .edit-form label {
+      display: block;
+      margin-bottom: 0.3em;
+      font-weight: bold;
+    }
+    .edit-form input {
+      width: 100%;
+      padding: 0.5em;
+      margin-bottom: 0.7em;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 1rem;
+    }
+    .save-edit-btn, .cancel-edit-btn {
+      padding: 0.6em 1em;
+      font-size: 1rem;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 0.5em;
+    }
+    .save-edit-btn {
+      background-color: #28a745;
+      color: #fff;
+    }
+    .save-edit-btn:hover {
+      background-color: #218838;
+    }
+    .cancel-edit-btn {
+      background-color: #dc3545;
+      color: #fff;
+    }
+    .cancel-edit-btn:hover {
+      background-color: #c82333;
     }
 
     /* Old Sessions Area */
@@ -400,8 +462,7 @@
     }
 
     function startNewSession() {
-      // Archive the current active session (unless it's empty,
-      // but we'll just archive anyway for consistency).
+      // Archive the current active session
       if (appData.activeSession && appData.activeSession.id) {
         appData.archive.push(appData.activeSession);
       }
@@ -479,6 +540,17 @@
         headerDiv.classList.add('box-header');
         headerDiv.textContent = `User: ${box.username} | Box #${box.boxNumber}`;
 
+        // Add an edit button on the header
+        const editBtn = document.createElement('button');
+        editBtn.textContent = 'Edit';
+        editBtn.classList.add('edit-btn');
+        // Prevent the header click from toggling items if user clicks "Edit"
+        editBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          toggleEditForm(boxLi, box);
+        });
+        headerDiv.appendChild(editBtn);
+
         // Items container
         const itemsContainer = document.createElement('div');
         itemsContainer.classList.add('items-container');
@@ -510,7 +582,6 @@
 
         // Calculate total
         const total = box.items.reduce((sum, it) => sum + it.price, 0);
-
         const totalDiv = document.createElement('div');
         totalDiv.classList.add('box-total');
         totalDiv.textContent = 'Total: $' + total.toFixed(2);
@@ -544,22 +615,75 @@
           renderBoxes();
         });
 
-        // Append
         itemsContainer.appendChild(itemsList);
         itemsContainer.appendChild(totalDiv);
         itemsContainer.appendChild(addItemForm);
 
-        // Toggle items container
+        // Toggle items container when clicking on the header text
         headerDiv.addEventListener('click', () => {
           itemsContainer.style.display =
             (itemsContainer.style.display === 'none') ? 'block' : 'none';
         });
         itemsContainer.style.display = 'none';
 
+        // Build edit form (initially hidden)
+        const editForm = document.createElement('div');
+        editForm.classList.add('edit-form');
+        editForm.innerHTML = `
+          <label>Username:</label>
+          <input type="text" class="edit-username" value="${box.username}" />
+          <label>Box #:</label>
+          <input type="text" class="edit-box-number" value="${box.boxNumber}" />
+          <button class="save-edit-btn">Save</button>
+          <button class="cancel-edit-btn">Cancel</button>
+        `;
+        const saveEditBtn = editForm.querySelector('.save-edit-btn');
+        const cancelEditBtn = editForm.querySelector('.cancel-edit-btn');
+
+        // Save changes
+        saveEditBtn.addEventListener('click', () => {
+          const newUsername = editForm.querySelector('.edit-username').value.trim();
+          const newBoxNumber = editForm.querySelector('.edit-box-number').value.trim();
+
+          if (!newUsername || !newBoxNumber) {
+            alert('Please fill in both the username and the box number.');
+            return;
+          }
+
+          // If the box number changed, check if it conflicts with another box
+          if (newBoxNumber !== box.boxNumber &&
+              appData.activeSession.boxes.some(b => b.boxNumber === newBoxNumber)) {
+            alert(`Box #${newBoxNumber} already exists in this session. Choose another.`);
+            return;
+          }
+
+          box.username = newUsername;
+          box.boxNumber = newBoxNumber;
+
+          saveToLocalStorage();
+          renderBoxes();
+        });
+
+        // Cancel editing
+        cancelEditBtn.addEventListener('click', () => {
+          editForm.style.display = 'none';
+        });
+
         boxLi.appendChild(headerDiv);
         boxLi.appendChild(itemsContainer);
+        boxLi.appendChild(editForm);
         boxList.appendChild(boxLi);
       });
+    }
+
+    // Helper to toggle the edit form display
+    function toggleEditForm(boxLi, box) {
+      const editForm = boxLi.querySelector('.edit-form');
+      if (!editForm) return;
+      // Show or hide the form
+      editForm.style.display = (editForm.style.display === 'none' || !editForm.style.display)
+        ? 'block'
+        : 'none';
     }
 
     /**********************************************************
