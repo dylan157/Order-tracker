@@ -33,10 +33,23 @@
       margin-bottom: 0.5em;
     }
 
+    /* Session stats container */
+    .session-stats {
+      background: #fff;
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 1em;
+      margin-bottom: 1em;
+    }
+    .session-stats p {
+      margin-bottom: 0.2em;
+      font-weight: bold;
+    }
+
     /* Session Control Buttons (top row) */
     .session-controls {
       display: flex;
-      flex-direction: column;  /* stack items vertically */
+      flex-direction: column;  /* stack items vertically for small screens */
       gap: 1em;
       margin-bottom: 1.5em;
     }
@@ -114,7 +127,14 @@
       border-radius: 6px;
       border: 1px solid #ddd;
       overflow: hidden;
+      transition: background-color 0.2s;
     }
+
+    /* If a box is paid, highlight with green */
+    .paid {
+      background-color: #d4edda;
+    }
+
     .box-header {
       padding: 1em;
       font-weight: bold;
@@ -127,10 +147,9 @@
       background: #d9d9d9;
     }
 
-    /* Edit button styling */
-    .edit-btn {
-      background-color: #ffc107;
-      color: #333;
+    /* The Edit & Paid buttons are hidden until the box is clicked */
+    .edit-btn, .paid-btn {
+      display: none; /* hidden by default; shown on box click */
       border: none;
       border-radius: 4px;
       padding: 0.4em 0.8em;
@@ -138,8 +157,19 @@
       font-size: 0.9rem;
       margin-left: 1em;
     }
+    .edit-btn {
+      background-color: #ffc107;
+      color: #333;
+    }
     .edit-btn:hover {
       background-color: #e0a800;
+    }
+    .paid-btn {
+      background-color: #28a745;
+      color: #fff;
+    }
+    .paid-btn:hover {
+      background-color: #218838;
     }
 
     .items-container {
@@ -338,9 +368,13 @@
   </style>
 </head>
 <body>
-
   <div class="container">
     <h2>Live Stream Orders</h2>
+
+    <!-- Session Stats -->
+    <div id="sessionStats" class="session-stats">
+      <!-- Will be filled by JavaScript -->
+    </div>
 
     <!-- Top buttons: start new session, copy data, toggle old sessions -->
     <div class="session-controls">
@@ -377,7 +411,7 @@
      *   activeSession: {
      *     id: "timestamp or unique ID",
      *     date: "timestamp or human date",
-     *     boxes: [ { boxNumber, username, items: [...] }, ... ]
+     *     boxes: [ { boxNumber, username, paid, items: [...] }, ... ]
      *   },
      *   archive: [
      *     {
@@ -414,6 +448,8 @@
 
     const oldSessionsArea = document.getElementById('oldSessionsArea');
     const oldSessionsList = document.getElementById('oldSessionsList');
+
+    const sessionStatsDiv = document.getElementById('sessionStats');
 
     /**********************************************************
      * Initialization
@@ -499,10 +535,11 @@
         return;
       }
 
-      // Create new box
+      // Create new box (start with paid = false)
       const newBox = {
         boxNumber: boxNumber,
         username: username,
+        paid: false,
         items: []
       };
       appData.activeSession.boxes.push(newBox);
@@ -516,9 +553,45 @@
     });
 
     /**********************************************************
+     * Manage Shipping
+     * If box total < £20, add shipping item (£3.95).
+     * If >= £20, remove shipping item.
+     **********************************************************/
+    function manageShipping(box) {
+      // Find shipping item index
+      const shippingIndex = box.items.findIndex(i => i.description === 'Shipping');
+      // Sum of non-shipping items
+      const subTotal = box.items
+        .filter(i => i.description !== 'Shipping')
+        .reduce((sum, i) => sum + i.price, 0);
+
+      if (subTotal >= 20) {
+        // Remove shipping if present
+        if (shippingIndex !== -1) {
+          box.items.splice(shippingIndex, 1);
+        }
+      } else {
+        // Add shipping if not present
+        if (shippingIndex === -1) {
+          box.items.push({
+            description: 'Shipping',
+            price: 3.95
+          });
+        }
+      }
+    }
+
+    /**********************************************************
      * Render Current Session Boxes
      **********************************************************/
     function renderBoxes() {
+      // Ensure shipping correctness for each box
+      appData.activeSession.boxes.forEach(box => {
+        manageShipping(box);
+      });
+      // Save after shipping checks
+      saveToLocalStorage();
+
       boxList.innerHTML = '';
 
       const boxes = appData.activeSession.boxes;
@@ -529,27 +602,47 @@
         msg.style.textAlign = 'center';
         msg.style.color = '#666';
         boxList.appendChild(msg);
+        updateSessionStats();
         return;
       }
 
       boxes.forEach(box => {
         const boxLi = document.createElement('li');
 
+        // If box is paid, add a class to highlight in green
+        if (box.paid) {
+          boxLi.classList.add('paid');
+        }
+
         // Header
         const headerDiv = document.createElement('div');
         headerDiv.classList.add('box-header');
         headerDiv.textContent = `User: ${box.username} | Box #${box.boxNumber}`;
 
-        // Add an edit button on the header
+        // Edit button (hidden by default; shown when box is clicked)
         const editBtn = document.createElement('button');
         editBtn.textContent = 'Edit';
         editBtn.classList.add('edit-btn');
-        // Prevent the header click from toggling items if user clicks "Edit"
+
+        // Paid button (toggles paid state)
+        const paidBtn = document.createElement('button');
+        paidBtn.classList.add('paid-btn');
+        paidBtn.textContent = box.paid ? 'Unpaid' : 'Paid';
+
+        // Stop header click from toggling items if user clicks on the buttons
         editBtn.addEventListener('click', (e) => {
           e.stopPropagation();
           toggleEditForm(boxLi, box);
         });
+        paidBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          box.paid = !box.paid;
+          saveToLocalStorage();
+          renderBoxes();
+        });
+
         headerDiv.appendChild(editBtn);
+        headerDiv.appendChild(paidBtn);
 
         // Items container
         const itemsContainer = document.createElement('div');
@@ -565,7 +658,7 @@
           itemLi.innerHTML = `
             <span>${item.description}</span>
             <span>
-              $${item.price.toFixed(2)}
+              £${item.price.toFixed(2)}
               <button class="remove-btn" data-index="${index}">Remove</button>
             </span>
           `;
@@ -584,7 +677,7 @@
         const total = box.items.reduce((sum, it) => sum + it.price, 0);
         const totalDiv = document.createElement('div');
         totalDiv.classList.add('box-total');
-        totalDiv.textContent = 'Total: $' + total.toFixed(2);
+        totalDiv.textContent = 'Total: £' + total.toFixed(2);
 
         // Add item form
         const addItemForm = document.createElement('div');
@@ -619,11 +712,19 @@
         itemsContainer.appendChild(totalDiv);
         itemsContainer.appendChild(addItemForm);
 
-        // Toggle items container when clicking on the header text
+        // Toggle items container & show buttons when clicking on the header text
         headerDiv.addEventListener('click', () => {
-          itemsContainer.style.display =
-            (itemsContainer.style.display === 'none') ? 'block' : 'none';
+          if (itemsContainer.style.display === 'none') {
+            itemsContainer.style.display = 'block';
+            editBtn.style.display = 'inline-block';
+            paidBtn.style.display = 'inline-block';
+          } else {
+            itemsContainer.style.display = 'none';
+            editBtn.style.display = 'none';
+            paidBtn.style.display = 'none';
+          }
         });
+        // Initially hidden
         itemsContainer.style.display = 'none';
 
         // Build edit form (initially hidden)
@@ -674,6 +775,9 @@
         boxLi.appendChild(editForm);
         boxList.appendChild(boxLi);
       });
+
+      // After rendering all boxes, update stats
+      updateSessionStats();
     }
 
     // Helper to toggle the edit form display
@@ -684,6 +788,32 @@
       editForm.style.display = (editForm.style.display === 'none' || !editForm.style.display)
         ? 'block'
         : 'none';
+    }
+
+    /**********************************************************
+     * Session Stats
+     **********************************************************/
+    function updateSessionStats() {
+      const { totalSold, totalPaid, leftToPay } = calculateSessionStats();
+      sessionStatsDiv.innerHTML = `
+        <p>Total Sold: £${totalSold.toFixed(2)}</p>
+        <p>Total Paid: £${totalPaid.toFixed(2)}</p>
+        <p>Left to Pay: £${leftToPay.toFixed(2)}</p>
+      `;
+    }
+
+    function calculateSessionStats() {
+      let totalSold = 0;
+      let totalPaid = 0;
+      appData.activeSession.boxes.forEach(box => {
+        const boxTotal = box.items.reduce((sum, i) => sum + i.price, 0);
+        totalSold += boxTotal;
+        if (box.paid) {
+          totalPaid += boxTotal;
+        }
+      });
+      const leftToPay = totalSold - totalPaid;
+      return { totalSold, totalPaid, leftToPay };
     }
 
     /**********************************************************
@@ -700,10 +830,11 @@
       boxes.forEach((box) => {
         output += `\nBox #${box.boxNumber} (User: ${box.username})\n`;
         box.items.forEach((item, idx) => {
-          output += `  ${idx + 1}) ${item.description} - $${item.price.toFixed(2)}\n`;
+          output += `  ${idx + 1}) ${item.description} - £${item.price.toFixed(2)}\n`;
         });
         let total = box.items.reduce((sum, it) => sum + it.price, 0);
-        output += `  Total: $${total.toFixed(2)}\n`;
+        output += `  Total: £${total.toFixed(2)}\n`;
+        output += `  Paid: ${box.paid ? 'Yes' : 'No'}\n`;
       });
 
       navigator.clipboard.writeText(output)
@@ -753,10 +884,11 @@
         session.boxes.forEach((box) => {
           txt += `Box #${box.boxNumber} (User: ${box.username})\n`;
           box.items.forEach((item, idx) => {
-            txt += `  ${idx + 1}) ${item.description} - $${item.price.toFixed(2)}\n`;
+            txt += `  ${idx + 1}) ${item.description} - £${item.price.toFixed(2)}\n`;
           });
           const total = box.items.reduce((sum, it) => sum + it.price, 0);
-          txt += `  Total: $${total.toFixed(2)}\n\n`;
+          txt += `  Total: £${total.toFixed(2)}\n`;
+          txt += `  Paid: ${box.paid ? 'Yes' : 'No'}\n\n`;
         });
         const pre = document.createElement('pre');
         pre.textContent = txt || '(No boxes in this session.)';
