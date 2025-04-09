@@ -76,6 +76,12 @@
     #copyDataBtn:hover {
       background-color: #59309a;
     }
+    #restoreClipboardBtn {
+      background-color: #fd7e14;
+    }
+    #restoreClipboardBtn:hover {
+      background-color: #e36d0f;
+    }
     #toggleOldSessionsBtn {
       background-color: #555;
     }
@@ -437,10 +443,11 @@
       <!-- Will be filled by JavaScript -->
     </div>
 
-    <!-- Top buttons: start new session, copy data, toggle old sessions -->
+    <!-- Top buttons: start new session, copy data, restore from clipboard, toggle old sessions -->
     <div class="session-controls">
       <button id="startNewSessionBtn">Start New Session</button>
       <button id="copyDataBtn">Copy Current Session</button>
+      <button id="restoreClipboardBtn">Restore from Clipboard</button>
       <button id="toggleOldSessionsBtn">View Old Sessions</button>
     </div>
 
@@ -504,6 +511,7 @@
     const boxList = document.getElementById('boxList');
 
     const copyDataBtn = document.getElementById('copyDataBtn');
+    const restoreClipboardBtn = document.getElementById('restoreClipboardBtn');
     const startNewSessionBtn = document.getElementById('startNewSessionBtn');
     const toggleOldSessionsBtn = document.getElementById('toggleOldSessionsBtn');
 
@@ -967,7 +975,6 @@
       let productTotal = 0;
       let shippingTotal = 0;
       let totalPaid = 0;
-      let totalOwed = 0;
 
       appData.activeSession.boxes.forEach(box => {
         let boxSubtotal = 0; // sum of product only
@@ -995,7 +1002,6 @@
         }
       });
 
-      // totalOwed is productTotal+shippingTotal minus totalPaid
       let overallTotal = productTotal + shippingTotal;
       let leftToPay = overallTotal - totalPaid;
 
@@ -1008,7 +1014,7 @@
     }
 
     /**********************************************************
-     * Copy Current Session Data
+     * Copy Current Session Data (TEXT format)
      **********************************************************/
     copyDataBtn.addEventListener('click', () => {
       const boxes = appData.activeSession.boxes;
@@ -1036,6 +1042,141 @@
           alert('Failed to copy data: ' + err);
         });
     });
+
+    /**********************************************************
+     * RESTORE Session from Clipboard (TEXT format)
+     * 1) Reads the text from clipboard
+     * 2) Parses into a session object
+     * 3) Overwrites current session if user confirms
+     **********************************************************/
+    restoreClipboardBtn.addEventListener('click', async () => {
+      try {
+        const text = await navigator.clipboard.readText();
+        if (!text) {
+          alert('Clipboard is empty or unreadable.');
+          return;
+        }
+
+        const newSession = parseClipboardTextToSession(text);
+        if (!newSession || !newSession.id) {
+          alert('Unable to parse a valid session from clipboard.');
+          return;
+        }
+
+        if (!confirm('This will overwrite your current session. Proceed?')) {
+          return;
+        }
+
+        // Archive current session if it exists
+        if (appData.activeSession && appData.activeSession.id) {
+          appData.archive.push(appData.activeSession);
+        }
+        // Set the new session
+        appData.activeSession = newSession;
+        saveToLocalStorage();
+        renderBoxes();
+        renderOldSessions();
+        alert('Session restored from clipboard!');
+      } catch (err) {
+        alert('Error restoring from clipboard: ' + err);
+      }
+    });
+
+    /**********************************************************
+     * parseClipboardTextToSession
+     * Takes the text format from copyDataBtn and reconstructs
+     * an activeSession object: { id, date, boxes: [...] }
+     * The textual format is:
+     *
+     * Live Stream Orders (Session on {someDate})
+     *
+     * Box #{boxNumber} (User: {username})
+     *   1) {desc} - £{price}
+     *   2) ...
+     *   Total: £{x.xx}
+     *   Paid: Yes/No
+     *
+     * returns { id, date, boxes: [...] }
+     **********************************************************/
+    function parseClipboardTextToSession(text) {
+      const lines = text.split('\n').map(line => line.trim()).filter(Boolean);
+      if (!lines.length) return null;
+
+      // The first line should be something like:
+      // "Live Stream Orders (Session on 4/9/2025, 1:42:36 PM)"
+      const firstLine = lines[0];
+      const sessionRegex = /^Live Stream Orders \(Session on (.+)\)$/;
+      const sessionMatch = firstLine.match(sessionRegex);
+      if (!sessionMatch) {
+        return null;
+      }
+      const sessionDate = sessionMatch[1].trim();
+      // We'll create an ID from current time or you can store a parse from date
+      const newSession = {
+        id: Date.now().toString(),
+        date: sessionDate,
+        boxes: []
+      };
+
+      // We'll parse subsequent lines. Each box starts with:
+      // "Box #{boxNumber} (User: {username})"
+      let currentBox = null;
+      const boxLineRegex = /^Box #([^ ]+)\s+\(User:\s*(.*?)\)$/i;
+      const itemLineRegex = /^\d+\)\s+(.*?)\s+-\s+£([\d.]+)$/;
+      const totalLineRegex = /^Total:\s+£([\d.]+)$/;
+      const paidLineRegex = /^Paid:\s+(Yes|No)$/i;
+
+      // We'll go through lines skipping the first, collecting boxes & items
+      for (let i = 1; i < lines.length; i++) {
+        const line = lines[i];
+        // "Box #3 (User: Dylan)"
+        let match = line.match(boxLineRegex);
+        if (match) {
+          // If we were in a box, push it
+          if (currentBox) {
+            newSession.boxes.push(currentBox);
+          }
+          currentBox = {
+            boxNumber: match[1].trim(),
+            username: match[2].trim(),
+            paid: false,
+            items: []
+          };
+          continue;
+        }
+
+        // "1) desc - £X.xx"
+        match = line.match(itemLineRegex);
+        if (match && currentBox) {
+          const desc = match[1].trim();
+          const price = parseFloat(match[2]);
+          if (!isNaN(price)) {
+            currentBox.items.push({ description: desc, price: price });
+          }
+          continue;
+        }
+
+        // "Total: £X.xx" => we can parse but we don't actually store it directly
+        match = line.match(totalLineRegex);
+        if (match) {
+          // not strictly needed for restoration, skip
+          continue;
+        }
+
+        // "Paid: Yes/No"
+        match = line.match(paidLineRegex);
+        if (match && currentBox) {
+          currentBox.paid = (match[1].toLowerCase() === 'yes');
+          continue;
+        }
+      }
+      // push last box if we have one
+      if (currentBox) {
+        newSession.boxes.push(currentBox);
+      }
+
+      return newSession;
+    }
 
     /**********************************************************
      * Toggle Old Sessions
