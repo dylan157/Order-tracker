@@ -151,14 +151,20 @@
       background: #e9e9e9;
       cursor: pointer;
       position: relative;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
     .box-header:hover {
       background: #d9d9d9;
     }
 
-    /* The Edit & "Paid"/"Unpaid" buttons are hidden until box is clicked */
-    .edit-btn-header, .paid-btn {
+    /* The Edit button is hidden until the box is expanded; 
+       the "paid/unpaid" button is now always visible. */
+    .edit-btn-header {
       display: none; 
+      background-color: #ffc107;
+      color: #333;
       border: none;
       border-radius: 4px;
       padding: 0.4em 0.8em;
@@ -166,21 +172,25 @@
       font-size: 0.9rem;
       margin-left: 1em;
     }
-    .edit-btn-header {
-      background-color: #ffc107;
-      color: #333;
-    }
     .edit-btn-header:hover {
       background-color: #e0a800;
     }
 
-    /* Paid button states: red for unpaid, green for paid */
+    /* Paid button states: red for unpaid, green for paid - always visible */
+    .paid-btn {
+      border: none;
+      border-radius: 4px;
+      padding: 0.4em 0.8em;
+      cursor: pointer;
+      font-size: 0.9rem;
+      margin-left: 0.75em;
+    }
     .paid-btn.unpaid-state {
-      background-color: #dc3545;
+      background-color: #dc3545; /* red */
       color: #fff;
     }
     .paid-btn.paid-state {
-      background-color: #28a745;
+      background-color: #28a745; /* green */
       color: #fff;
     }
 
@@ -728,41 +738,42 @@
         // Header
         const headerDiv = document.createElement('div');
         headerDiv.classList.add('box-header');
-        headerDiv.textContent = `User: ${box.username} | Box #${box.boxNumber}`;
 
-        // Edit button (hidden by default; shown when box is clicked)
-        const editBtnHeader = document.createElement('button');
-        editBtnHeader.textContent = 'Edit';
-        editBtnHeader.classList.add('edit-btn-header');
+        // Left side text
+        const titleSpan = document.createElement('span');
+        titleSpan.textContent = `User: ${box.username} | Box #${box.boxNumber}`;
 
-        // Paid button (toggles paid state)
+        // Paid/unpaid button (always visible)
         const paidBtn = document.createElement('button');
         paidBtn.classList.add('paid-btn');
-
         if (box.paid) {
-          // If paid -> text "Paid", green
           paidBtn.textContent = 'Paid';
           paidBtn.classList.add('paid-state');
         } else {
-          // If unpaid -> text "Unpaid", red
           paidBtn.textContent = 'Unpaid';
           paidBtn.classList.add('unpaid-state');
         }
-
-        // Stop header click from toggling items if user clicks on the buttons
-        editBtnHeader.addEventListener('click', (e) => {
-          e.stopPropagation();
-          toggleBoxEditForm(boxLi, box);
-        });
         paidBtn.addEventListener('click', (e) => {
-          e.stopPropagation();
+          e.stopPropagation();  // don’t expand/collapse
           box.paid = !box.paid;
           saveToLocalStorage();
           renderBoxes();
         });
 
-        headerDiv.appendChild(editBtnHeader);
+        // Edit button (hidden by default; shown when box is expanded)
+        const editBtnHeader = document.createElement('button');
+        editBtnHeader.textContent = 'Edit';
+        editBtnHeader.classList.add('edit-btn-header');
+
+        editBtnHeader.addEventListener('click', (e) => {
+          e.stopPropagation();  // don’t expand/collapse
+          toggleBoxEditForm(boxLi, box);
+        });
+
+        // Put left text + paidBtn + editBtn into the header
+        headerDiv.appendChild(titleSpan);
         headerDiv.appendChild(paidBtn);
+        headerDiv.appendChild(editBtnHeader);
 
         // Items container
         const itemsContainer = document.createElement('div');
@@ -891,18 +902,19 @@
         itemsContainer.appendChild(totalDiv);
         itemsContainer.appendChild(addItemForm);
 
-        // Toggle items container & show/hide header buttons
+        // Expand/collapse box details by clicking the header
         headerDiv.addEventListener('click', () => {
+          // skip if user clicks the "Paid/Unpaid" or "Edit" button
+          // (already handled by e.stopPropagation() above)
           if (itemsContainer.style.display === 'none') {
             itemsContainer.style.display = 'block';
-            editBtnHeader.style.display = 'inline-block';
-            paidBtn.style.display = 'inline-block';
+            editBtnHeader.style.display = 'inline-block'; // Show "Edit" button on expand
           } else {
             itemsContainer.style.display = 'none';
-            editBtnHeader.style.display = 'none';
-            paidBtn.style.display = 'none';
+            editBtnHeader.style.display = 'none';         // Hide "Edit" button on collapse
           }
         });
+
         itemsContainer.style.display = 'none';
 
         // Build edit form for box (initially hidden)
@@ -1092,7 +1104,7 @@
      *
      * Box #{boxNumber} (User: {username})
      *   1) {desc} - £{price}
-     *   2) ...
+     *   ...
      *   Total: £{x.xx}
      *   Paid: Yes/No
      *
@@ -1105,7 +1117,7 @@
       // The first line should be something like:
       // "Live Stream Orders (Session on 4/9/2025, 1:42:36 PM)"
       const firstLine = lines[0];
-      const sessionRegex = /^Live Stream Orders \(Session on (.+)\)$/;
+      const sessionRegex = /^Live Stream Orders Session on (.+)$/;
       const sessionMatch = firstLine.match(sessionRegex);
       if (!sessionMatch) {
         return null;
@@ -1121,12 +1133,11 @@
       // We'll parse subsequent lines. Each box starts with:
       // "Box #{boxNumber} (User: {username})"
       let currentBox = null;
-      const boxLineRegex = /^Box #([^ ]+)\s+\(User:\s*(.*?)\)$/i;
-      const itemLineRegex = /^\d+\)\s+(.*?)\s+-\s+£([\d.]+)$/;
+      const boxLineRegex = /^Box #([^ ]+)\s+User:\s*(.*?)$/i;
+      const itemLineRegex = /^\d+\s+(.*?)\s+-\s+£([\d.]+)$/;
       const totalLineRegex = /^Total:\s+£([\d.]+)$/;
       const paidLineRegex = /^Paid:\s+(Yes|No)$/i;
 
-      // We'll go through lines skipping the first, collecting boxes & items
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i];
         // "Box #3 (User: Dylan)"
@@ -1156,10 +1167,10 @@
           continue;
         }
 
-        // "Total: £X.xx" => we can parse but we don't actually store it directly
+        // "Total: £X.xx"
         match = line.match(totalLineRegex);
         if (match) {
-          // not strictly needed for restoration, skip
+          // not strictly needed for restoration
           continue;
         }
 
