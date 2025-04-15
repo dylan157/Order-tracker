@@ -1,0 +1,16 @@
+{
+  "name": "Order Tracker",
+  "short_name": "OrderTracker",
+  "description": "Track live stream orders and manage sessions.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#007bff",
+  "icons": [
+    {
+      "src": "./icons/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

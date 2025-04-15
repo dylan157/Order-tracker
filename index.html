@@ -5,6 +5,9 @@
   <!-- Make it responsive on mobile -->
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Live Stream Orders</title>
+  <link rel="manifest" href="./manifest.json">
+  <meta name="theme-color" content="#007bff">
+  <link rel="icon" href="./icons/icon.svg" type="image/svg+xml">
   <style>
     /* Base reset & body styles */
     * {
@@ -1265,6 +1268,13 @@
         li.appendChild(detailsDiv);
         oldSessionsList.appendChild(li);
       });
+    }
+
+    // Register the service worker
+    if ("serviceWorker" in navigator) {
+      navigator.serviceWorker.register("./service-worker.js")
+        .then(() => console.log("Service Worker registered successfully."))
+        .catch((error) => console.error("Service Worker registration failed:", error));
     }
   </script>
 </body>
