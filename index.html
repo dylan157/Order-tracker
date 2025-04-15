@@ -499,7 +499,6 @@
      *     },
      *     ...
      *   ]
-     * }
      **********************************************************/
 
     const STORAGE_KEY = 'liveStreamData';
@@ -1115,35 +1114,34 @@
       if (!lines.length) return null;
 
       // The first line should be something like:
-      // "Live Stream Orders (Session on 4/9/2025, 1:42:36 PM)"
+      // "Live Stream Orders (Session on 15/04/2025, 14:55:46)"
       const firstLine = lines[0];
-      const sessionRegex = /^Live Stream Orders Session on (.+)$/;
+      const sessionRegex = /^Live Stream Orders \(Session on (.+)\)$/;
       const sessionMatch = firstLine.match(sessionRegex);
       if (!sessionMatch) {
         return null;
       }
       const sessionDate = sessionMatch[1].trim();
-      // We'll create an ID from current time or you can store a parse from date
+
+      // Create a new session object
       const newSession = {
         id: Date.now().toString(),
         date: sessionDate,
         boxes: []
       };
 
-      // We'll parse subsequent lines. Each box starts with:
-      // "Box #{boxNumber} (User: {username})"
+      // Parse subsequent lines for boxes and items
       let currentBox = null;
-      const boxLineRegex = /^Box #([^ ]+)\s+User:\s*(.*?)$/i;
-      const itemLineRegex = /^\d+\s+(.*?)\s+-\s+£([\d.]+)$/;
-      const totalLineRegex = /^Total:\s+£([\d.]+)$/;
+      const boxLineRegex = /^Box #([^ ]+)\s+\(User:\s*(.*?)\)$/i;
+      const itemLineRegex = /^\d+\)\s+(.*?)\s+-\s+£([\d.]+)$/;
       const paidLineRegex = /^Paid:\s+(Yes|No)$/i;
 
       for (let i = 1; i < lines.length; i++) {
         const line = lines[i];
-        // "Box #3 (User: Dylan)"
+
+        // Match box line: "Box #1 (User: bellington)"
         let match = line.match(boxLineRegex);
         if (match) {
-          // If we were in a box, push it
           if (currentBox) {
             newSession.boxes.push(currentBox);
           }
@@ -1156,7 +1154,7 @@
           continue;
         }
 
-        // "1) desc - £X.xx"
+        // Match item line: "1) Free Shipping - £0.00"
         match = line.match(itemLineRegex);
         if (match && currentBox) {
           const desc = match[1].trim();
@@ -1167,21 +1165,15 @@
           continue;
         }
 
-        // "Total: £X.xx"
-        match = line.match(totalLineRegex);
-        if (match) {
-          // not strictly needed for restoration
-          continue;
-        }
-
-        // "Paid: Yes/No"
+        // Match paid line: "Paid: No"
         match = line.match(paidLineRegex);
         if (match && currentBox) {
           currentBox.paid = (match[1].toLowerCase() === 'yes');
           continue;
         }
       }
-      // push last box if we have one
+
+      // Push the last box if it exists
       if (currentBox) {
         newSession.boxes.push(currentBox);
       }
