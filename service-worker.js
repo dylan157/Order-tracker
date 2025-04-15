@@ -2,8 +2,6 @@ const CACHE_NAME = "order-tracker-cache-v1";
 const urlsToCache = [
   "./index.html",
   "./manifest.json",
-  "./style.css", // Add your CSS file here
-  "./script.js", // Add your JavaScript file here
   "./icons/icon.svg"
 ];
 
